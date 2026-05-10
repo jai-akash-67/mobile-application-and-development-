@@ -1,0 +1,267 @@
+let historyStack=[];
+
+/* NAV */
+function show(id){
+let current=document.querySelector('.active');
+if(current) historyStack.push(current.id);
+
+document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+
+if(id==="dashboard") loadCal();
+if(id==="historyPage") loadHistory();
+}
+
+function goBack(){
+let prev=historyStack.pop();
+if(prev){
+document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+document.getElementById(prev).classList.add('active');
+}
+}
+
+/* AUTH */
+function signup(){
+let users=JSON.parse(localStorage.getItem("users"))||[];
+users.push({u:newUser.value,p:newPass.value});
+localStorage.setItem("users",JSON.stringify(users));
+alert("Account Created");
+show('login');
+}
+
+function login(){
+let users=JSON.parse(localStorage.getItem("users"))||[];
+let found=users.find(x=>x.u==user.value && x.p==pass.value);
+if(found) show('terms'); else alert("Invalid Login");
+}
+
+/* PROFILE */
+function saveDetails(){
+let profile={
+name:name.value,
+email:email.value,
+phone:phone.value,
+address:address.value
+};
+localStorage.setItem("profile",JSON.stringify(profile));
+show('location');
+}
+
+function editProfile(){show('details');}
+
+/* LOCATION */
+function setLocation(){
+let lat=(12+Math.random()).toFixed(5);
+let lng=(80+Math.random()).toFixed(5);
+map.innerHTML=`Lat:${lat}<br>Lng:${lng}`;
+homeLocation.innerText=`📍 ${lat}, ${lng}`;
+}
+
+/* TRACK */
+function request(){
+show('tracking');
+let d=10;
+let i=setInterval(()=>{
+d--;
+distance.innerHTML="Distance: "+d+" km";
+if(d<=0){clearInterval(i);show('cart');loadItems();}
+},1000);
+}
+
+/* SCRAP */
+let scrap=[
+["Copper",969],["Brass",598.5],["Aluminum",214.25],
+["Stainless Steel",53.5],["Iron",27.3],["Tin",18.3],
+["Battery",75],["TV",170],["Laptop",300],
+["Newspaper",11],["Books",12],["Cardboard",5],
+["Plastic",10],["Glass Bottle",2]
+];
+
+let cart=[],total=0;
+
+function loadItems(){
+items.innerHTML="";
+scrap.forEach((s,i)=>{
+items.innerHTML+=`
+<div class="item">
+${s[0]} ₹${s[1]}
+<input type="number" onchange="add(${i},this.value)">
+<button onclick="removeItem(${i})">Remove</button>
+</div>`;
+});
+}
+
+function add(i,w){
+cart[i]={name:scrap[i][0],amt:w*scrap[i][1]};
+calc();
+}
+
+function removeItem(i){cart[i]=null;calc();}
+
+function calc(){
+total=0;
+cart.forEach(c=>{if(c) total+=c.amt});
+totalEl=document.getElementById("total");
+if(totalEl) totalEl.innerText=total;
+}
+
+/* INVOICE */
+function invoice(){
+show('invoice');
+
+let eco=Math.floor(total/2);
+
+let b="";
+cart.forEach(c=>{
+if(c){
+b+=`<div><b>${c.name}</b> ₹${c.amt}</div>`;
+}
+});
+
+bill.innerHTML=`
+<div style="background:white;color:black;padding:20px;border-radius:10px">
+<h3>G-Collector Invoice</h3>
+${b}
+<hr>
+<b>Total: ₹${total}</b><br>
+<b>E-Coins: ${eco}</b>
+<p style="color:green">Garbage collected successfully ✔</p>
+</div>
+`;
+
+let coins=parseInt(localStorage.getItem("coins"))||0;
+coins+=eco;
+localStorage.setItem("coins",coins);
+document.getElementById("coins").innerText=coins;
+
+let history=JSON.parse(localStorage.getItem("history"))||[];
+history.push({date:new Date().toISOString(),items:cart,amt:total,eco:eco});
+localStorage.setItem("history",JSON.stringify(history));
+}
+
+/* DASHBOARD */
+let currentDate=new Date();
+
+function loadCal(){
+let calendar=document.getElementById("calendar");
+let monthYear=document.getElementById("monthYear");
+calendar.innerHTML="";
+
+let year=currentDate.getFullYear();
+let month=currentDate.getMonth();
+
+let firstDay=new Date(year,month,1).getDay();
+let daysInMonth=new Date(year,month+1,0).getDate();
+
+let months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+monthYear.innerText=months[month]+" "+year;
+
+let history=JSON.parse(localStorage.getItem("history"))||[];
+
+for(let i=0;i<firstDay;i++) calendar.innerHTML+=`<div></div>`;
+
+for(let i=1;i<=daysInMonth;i++){
+let hasData=history.find(x=>{
+let d=new Date(x.date);
+return d.getDate()==i && d.getMonth()==month && d.getFullYear()==year;
+});
+calendar.innerHTML+=`<div class="day ${hasData?'green':''}">${i}</div>`;
+}
+}
+
+function nextMonth(){currentDate.setMonth(currentDate.getMonth()+1);loadCal();}
+function prevMonth(){currentDate.setMonth(currentDate.getMonth()-1);loadCal();}
+
+/* ANALYTICS */
+function drawChart(){
+let ctx=document.getElementById("chart").getContext("2d");
+ctx.clearRect(0,0,300,200);
+
+let values=[50,80,40,90,60];
+
+values.forEach((v,i)=>{
+let h=0;
+let anim=setInterval(()=>{
+h+=5;
+ctx.fillStyle="#00ffcc";
+ctx.fillRect(i*40,200-h,25,h);
+if(h>=v) clearInterval(anim);
+},30);
+});
+}
+
+/* HISTORY */
+function loadHistory(){
+let h=JSON.parse(localStorage.getItem("history"))||[];
+historyList.innerHTML="";
+h.forEach(x=>{
+historyList.innerHTML+=`
+<div class="item">
+${new Date(x.date).toLocaleDateString()}<br>
+Total ₹${x.amt}<br>
+E-Coins ${x.eco}
+</div>`;
+});
+}
+
+/* COMMUNITY */
+function addPost(){
+let t=prompt("Post");
+if(!t) return;
+let p=JSON.parse(localStorage.getItem("posts"))||[];
+p.push({t,like:0});
+localStorage.setItem("posts",JSON.stringify(p));
+loadPosts();
+}
+
+function loadPosts(){
+posts.innerHTML="";
+let p=JSON.parse(localStorage.getItem("posts"))||[];
+if(p.length===0){
+p=[{t:"Clean India 🌿",like:5},{t:"Recycling drive ♻️",like:3}];
+localStorage.setItem("posts",JSON.stringify(p));
+}
+p.forEach((x,i)=>{
+posts.innerHTML+=`
+<div class="post">
+${x.t}
+<button onclick="like(${i})">❤️ ${x.like}</button>
+</div>`;
+});
+}
+
+function like(i){
+let p=JSON.parse(localStorage.getItem("posts"));
+p[i].like++;
+localStorage.setItem("posts",JSON.stringify(p));
+loadPosts();
+}
+
+/* SETTINGS */
+function toggleMode(){
+document.body.classList.toggle("light");
+localStorage.setItem("theme",document.body.classList.contains("light"));
+}
+
+function logout(){location.reload();}
+
+/* INIT */
+window.onload=()=>{
+setTimeout(()=>show('login'),2000);
+loadPosts();
+
+let coins=localStorage.getItem("coins")||0;
+document.getElementById("coins").innerText=coins;
+
+if(localStorage.getItem("theme")=="true"){
+document.body.classList.add("light");
+}
+
+let p=JSON.parse(localStorage.getItem("profile"));
+if(p){
+pname.innerText=p.name;
+pemail.innerText=p.email;
+pphone.innerText=p.phone;
+paddress.innerText=p.address;
+}
+};
